@@ -131,10 +131,10 @@
           colorIdx:      Math.floor(Math.random() * PALETTE.length),
           wakePhase:     Math.random() * Math.PI * 2,
           wakeSpeed:     0.0005 + Math.random() * 0.0008,
-          wakeThresh:    0.62   + Math.random() * 0.30,
+          wakeThresh:    0.80   + Math.random() * 0.18,
           twinklePhase:  Math.random() * Math.PI * 2,
           twinkleSpeed:  0.0003 + Math.random() * 0.0006,  // slower than waking
-          twinkleThresh: 0.75   + Math.random() * 0.22,    // very sparse
+          twinkleThresh: 0.82   + Math.random() * 0.16,    // very sparse
         })),
       });
     }
@@ -204,10 +204,6 @@
       const bar  = bars[bi];
       const barX = slotW * bi + (slotW - barW) / 2;
 
-      ctx.fillStyle = 'rgba(255,255,255,0.03)';
-      rrect(barX - 1, 0, barW + 2, H, CORNER_R);
-      ctx.fill();
-
       for (let si = 0; si < NUM_SEGS; si++) {
         const seg  = bar.segments[si];
         const segY = SEG_GAP + si * (segH + SEG_GAP);
@@ -217,9 +213,11 @@
         if (phase === 'dark') {
           intensity = 0;
         } else if (phase === 'waking') {
+          // White-only, sparse, half brightness
+          color = STROBE;
           const osc = Math.sin(t * seg.wakeSpeed + seg.wakePhase);
           if (osc > seg.wakeThresh) {
-            intensity = ((osc - seg.wakeThresh) / (1 - seg.wakeThresh)) * 0.32;
+            intensity = ((osc - seg.wakeThresh) / (1 - seg.wakeThresh)) * 0.5;
           }
         } else if (phase === 'house') {
           color = STROBE; intensity = 1.0;
@@ -228,6 +226,7 @@
           const fadeStart = (si / NUM_SEGS) * 0.4;
           intensity = Math.max(0, 1 - (phaseT - fadeStart) * 3.0);
         } else if (phase === 'done' && twinkling) {
+          color = STROBE;
           const osc = Math.sin(t * seg.twinkleSpeed + seg.twinklePhase);
           if (osc > seg.twinkleThresh) {
             intensity = ((osc - seg.twinkleThresh) / (1 - seg.twinkleThresh)) * 0.5;
