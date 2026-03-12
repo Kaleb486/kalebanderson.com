@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaleb Anderson — Music</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding: 3rem 2rem 5rem;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    a.back {
+      display: inline-block;
+      color: rgba(255,255,255,0.35);
+      text-decoration: none;
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 4rem;
+      transition: color 0.2s;
+    }
+    a.back:hover { color: rgba(255,255,255,0.8); }
+
+    h1 {
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 200;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-bottom: 3.5rem;
+    }
+
+    section { margin-bottom: 4rem; }
+
+    h2 {
+      font-size: 0.65rem;
+      font-weight: 400;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 1.8rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .entry {
+      padding: 1.4rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .entry:last-child { border-bottom: none; }
+
+    .entry-title {
+      font-size: 1rem;
+      font-weight: 300;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.3rem;
+    }
+
+    .entry-sub {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.05em;
+      margin-bottom: 0.7rem;
+    }
+
+    a.entry-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,0.15);
+      padding: 0.35em 1em;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    a.entry-link:hover {
+      color: #fff;
+      border-color: rgba(255,255,255,0.5);
+    }
+
+    /* Band entries — just a clean link row */
+    .band-entry {
+      padding: 1.2rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .band-entry:last-child { border-bottom: none; }
+
+    .band-name {
+      font-size: 1rem;
+      font-weight: 300;
+      letter-spacing: 0.08em;
+    }
+
+    a.band-link {
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    a.band-link:hover { color: #fff; }
+  </style>
+</head>
+<body>
+
+  <a class="back" href="/">← Kaleb Anderson</a>
+
+  <h1>Music</h1>
+
+  <section>
+    <h2>Recordings</h2>
+
+    <div class="entry">
+      <div class="entry-title">Ten Dollar Outfit</div>
+      <div class="entry-sub">East Meets West</div>
+      <a class="entry-link" href="https://open.spotify.com/album/20IXAQgzDHkUbVdQSagTYa" target="_blank" rel="noopener">Spotify ↗</a>
+    </div>
+
+    <div class="entry">
+      <div class="entry-title">The Sweet Remains</div>
+      <div class="entry-sub">Ghosts In the Orange Blossom Air</div>
+      <a class="entry-link" href="https://open.spotify.com/intl-fr/track/7GU2BDUuLYbayTzYdqnUPY" target="_blank" rel="noopener">Spotify ↗</a>
+    </div>
+  </section>
+
+  <section>
+    <h2>Currently Playing With</h2>
+
+    <div class="band-entry">
+      <span class="band-name">Brian Chartrand</span>
+      <a class="band-link" href="https://www.instagram.com/brianchartrand/" target="_blank" rel="noopener">Instagram ↗</a>
+    </div>
+
+    <div class="band-entry">
+      <span class="band-name">Antenna Project</span>
+      <a class="band-link" href="https://antennaproject.com/" target="_blank" rel="noopener">Site ↗</a>
+    </div>
+
+    <div class="band-entry">
+      <span class="band-name">Late Harvest</span>
+      <a class="band-link" href="https://www.lateharvestjazz.com/" target="_blank" rel="noopener">Site ↗</a>
+    </div>
+  </section>
+
+</body>
+</html>

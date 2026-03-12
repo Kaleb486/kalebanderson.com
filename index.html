@@ -79,6 +79,13 @@
       background: rgba(255, 255, 255, 0.08);
       border-color: rgba(255, 255, 255, 0.8);
     }
+
+    #music-btn {
+      margin-top: 1.2rem;
+      opacity: 0;
+      transition: opacity 1.4s ease;
+    }
+    #music-btn.visible { opacity: 1; }
   </style>
 </head>
 <body>
@@ -89,6 +96,9 @@
 <div id="content">
   <h1>Kaleb Anderson</h1>
   <a class="cta" href="https://www.linkedin.com/in/educloud" target="_blank" rel="noopener">LinkedIn ↗</a>
+  <div id="music-btn">
+    <a class="cta" href="music.html">Music ↗</a>
+  </div>
 </div>
 
 <script>
@@ -264,9 +274,15 @@
       if (audio.volume >= 0.8) clearInterval(fadeInId);
     }, 50);
 
-    // Twinkling starts ~5s after the name reveal
     const revealAt = T_DARK + T_WAKING + T_HOUSE + T_FADEOUT * 0.35;
+
+    // Twinkling starts ~5s after the name reveal
     setTimeout(() => { twinkling = true; requestAnimationFrame(draw); }, revealAt + 5000);
+
+    // Music button fades in 15s after reveal
+    setTimeout(() => {
+      document.getElementById('music-btn').classList.add('visible');
+    }, revealAt + 15000);
 
     // Stop twinkling when track ends naturally
     audio.addEventListener('ended', () => { twinkling = false; });
