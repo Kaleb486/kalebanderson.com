@@ -253,8 +253,8 @@
     audio.volume = 0.8;
     audio.play();
 
-    // Fade out after animation completes
-    const fadeAt = T_TOTAL + 1000;  // ms
+    // Fade out after 30 seconds
+    const fadeAt = 30000;
     setTimeout(() => {
       const step = 50;
       const id = setInterval(() => {
