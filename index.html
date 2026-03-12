@@ -120,79 +120,21 @@
   const T_TOTAL   = T_DARK + T_WAKING + T_HOUSE + T_FADEOUT;
 
   let startTime = null;
-  let bars = [];
-
-  // ── Sparkle state ─────────────────────────────────────────────
-  let sparkles        = [];
-  let sparkleRunning  = false;
-  let sparkleSpawnId  = null;
-
-  function addSparkle() {
-    const W = canvas.width, H = canvas.height;
-    // Exclusion zone: roughly the center area where name + button live
-    const exW = Math.min(600, W * 0.46), exH = Math.min(280, H * 0.28);
-    const exX1 = W / 2 - exW / 2, exX2 = W / 2 + exW / 2;
-    const exY1 = H / 2 - exH / 2, exY2 = H / 2 + exH / 2;
-    let x, y, tries = 0;
-    do {
-      x = Math.random() * W;
-      y = Math.random() * H;
-    } while (++tries < 30 && x > exX1 && x < exX2 && y > exY1 && y < exY2);
-    sparkles.push({
-      x, y,
-      size:    0.5 + Math.random() * 1.2,
-      opacity: 0,
-      dir:     1,
-      speed:   0.004 + Math.random() * 0.006,
-    });
-  }
-
-  function drawSparkles() {
-    if (!sparkleRunning && sparkles.length === 0) return;
-    const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, H);
-    sparkles = sparkles.filter(s => {
-      s.opacity += s.dir * s.speed;
-      if (s.opacity >= 1) { s.dir = -1; }
-      if (s.opacity <= 0 && s.dir === -1) return false;
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, s.opacity) * 0.55;
-      ctx.fillStyle   = '#fff';
-      ctx.shadowBlur  = 5;
-      ctx.shadowColor = '#fff';
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-      return true;
-    });
-    requestAnimationFrame(drawSparkles);
-  }
-
-  function startSparkles() {
-    sparkleRunning = true;
-    sparkleSpawnId = setInterval(() => {
-      if (sparkles.length < 35) addSparkle();
-    }, 300);
-    drawSparkles();
-  }
-
-  function stopSparkles() {
-    sparkleRunning = false;
-    clearInterval(sparkleSpawnId);
-    // existing sparkles fade out naturally in drawSparkles
-  }
+  let bars      = [];
+  let twinkling = false;
 
   function initBars() {
     bars = [];
     for (let i = 0; i < NUM_BARS; i++) {
       bars.push({
         segments: Array.from({ length: NUM_SEGS }, () => ({
-          colorIdx:   Math.floor(Math.random() * PALETTE.length),
-          wakePhase:  Math.random() * Math.PI * 2,
-          wakeSpeed:  0.0005 + Math.random() * 0.0008,
-          wakeThresh: 0.62 + Math.random() * 0.30,
+          colorIdx:      Math.floor(Math.random() * PALETTE.length),
+          wakePhase:     Math.random() * Math.PI * 2,
+          wakeSpeed:     0.0005 + Math.random() * 0.0008,
+          wakeThresh:    0.62   + Math.random() * 0.30,
+          twinklePhase:  Math.random() * Math.PI * 2,
+          twinkleSpeed:  0.0003 + Math.random() * 0.0006,  // slower than waking
+          twinkleThresh: 0.75   + Math.random() * 0.22,    // very sparse
         })),
       });
     }
@@ -285,6 +227,11 @@
           color = STROBE;
           const fadeStart = (si / NUM_SEGS) * 0.4;
           intensity = Math.max(0, 1 - (phaseT - fadeStart) * 3.0);
+        } else if (phase === 'done' && twinkling) {
+          const osc = Math.sin(t * seg.twinkleSpeed + seg.twinklePhase);
+          if (osc > seg.twinkleThresh) {
+            intensity = ((osc - seg.twinkleThresh) / (1 - seg.twinkleThresh)) * 0.5;
+          }
         }
 
         if (intensity > 0.01) {
@@ -301,33 +248,39 @@
       content.classList.add('visible');
     }
 
-    if (phase !== 'done') {
+    if (phase !== 'done' || twinkling) {
       requestAnimationFrame(draw);
-    } else {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, W, H);
     }
   }
 
   // ── Audio: real jazz track ────────────────────────────────────
   function startAudio() {
     const audio = new Audio('abydos_music-jazzy-lounge-cafe-182992.mp3');
-    audio.volume = 0.8;
+    audio.currentTime = 1;   // skip 1s into track
+    audio.volume = 0;
     audio.play();
 
-    // Sparkles start ~5s after the reveal
-    const revealAt = T_DARK + T_WAKING + T_HOUSE + T_FADEOUT * 0.35;
-    setTimeout(startSparkles, revealAt + 5000);
+    // Fade in over ~2.5s
+    const fadeInId = setInterval(() => {
+      audio.volume = Math.min(0.8, audio.volume + 0.016);
+      if (audio.volume >= 0.8) clearInterval(fadeInId);
+    }, 50);
 
-    // Fade out music at 30s, stop sparkles when fade is done (~32s)
-    const fadeAt = 30000;
+    // Twinkling starts ~5s after the name reveal
+    const revealAt = T_DARK + T_WAKING + T_HOUSE + T_FADEOUT * 0.35;
+    setTimeout(() => { twinkling = true; }, revealAt + 5000);
+
+    // Fade out music at 30s, stop twinkling when silence hits
     setTimeout(() => {
-      const step = 50;
-      const id = setInterval(() => {
+      const fadeOutId = setInterval(() => {
         audio.volume = Math.max(0, audio.volume - 0.03);
-        if (audio.volume === 0) { clearInterval(id); audio.pause(); stopSparkles(); }
-      }, step);
-    }, fadeAt);
+        if (audio.volume === 0) {
+          clearInterval(fadeOutId);
+          audio.pause();
+          twinkling = false;
+        }
+      }, 50);
+    }, 30000);
   }
 
   // ── Entry point ───────────────────────────────────────────────
