@@ -267,7 +267,7 @@
 
     // Twinkling starts ~5s after the name reveal
     const revealAt = T_DARK + T_WAKING + T_HOUSE + T_FADEOUT * 0.35;
-    setTimeout(() => { twinkling = true; }, revealAt + 5000);
+    setTimeout(() => { twinkling = true; requestAnimationFrame(draw); }, revealAt + 5000);
 
     // Fade out music at 30s, stop twinkling when silence hits
     setTimeout(() => {
