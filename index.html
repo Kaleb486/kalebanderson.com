@@ -13,6 +13,26 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
+    /* ── Click-to-enter gate ─────────────────────────────── */
+    #intro {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: opacity 0.5s ease;
+    }
+    #intro.out { opacity: 0; pointer-events: none; }
+    #intro span {
+      color: rgba(255, 255, 255, 0.28);
+      font-size: 0.7rem;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+    }
+
     canvas {
       display: block;
       position: fixed;
@@ -30,7 +50,6 @@
       transition: opacity 1.4s ease;
       pointer-events: none;
     }
-
     #content.visible {
       opacity: 1;
       pointer-events: auto;
@@ -56,7 +75,6 @@
       text-transform: uppercase;
       transition: background 0.3s, border-color 0.3s;
     }
-
     a.cta:hover {
       background: rgba(255, 255, 255, 0.08);
       border-color: rgba(255, 255, 255, 0.8);
@@ -65,6 +83,7 @@
 </head>
 <body>
 
+<div id="intro"><span>click to enter</span></div>
 <canvas id="stage"></canvas>
 
 <div id="content">
@@ -76,6 +95,7 @@
   const canvas  = document.getElementById('stage');
   const ctx     = canvas.getContext('2d');
   const content = document.getElementById('content');
+  const intro   = document.getElementById('intro');
 
   // ── ASU Brand Palette ─────────────────────────────────────────
   const PALETTE = [
@@ -102,7 +122,6 @@
   let startTime = null;
   let bars = [];
 
-  // ── Initialise bar data ───────────────────────────────────────
   function initBars() {
     bars = [];
     for (let i = 0; i < NUM_BARS; i++) {
@@ -110,14 +129,13 @@
         segments: Array.from({ length: NUM_SEGS }, () => ({
           colorIdx:   Math.floor(Math.random() * PALETTE.length),
           wakePhase:  Math.random() * Math.PI * 2,
-          wakeSpeed:  0.0005 + Math.random() * 0.0008,  // very slow (per ms)
-          wakeThresh: 0.62 + Math.random() * 0.30,      // sparse — most are off at any moment
+          wakeSpeed:  0.0005 + Math.random() * 0.0008,
+          wakeThresh: 0.62 + Math.random() * 0.30,
         })),
       });
     }
   }
 
-  // ── Resize ────────────────────────────────────────────────────
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -126,27 +144,22 @@
   resize();
   initBars();
 
-  // ── Rounded rect helper ───────────────────────────────────────
   function rrect(x, y, w, h, r) {
     if (typeof ctx.roundRect === 'function') {
-      ctx.beginPath();
-      ctx.roundRect(x, y, w, h, r);
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
     } else {
       ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
+      ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
       ctx.quadraticCurveTo(x + w, y,     x + w, y + r);
       ctx.lineTo(x + w, y + h - r);
       ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
       ctx.lineTo(x + r, y + h);
       ctx.quadraticCurveTo(x,     y + h, x,     y + h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x,     y,     x + r, y);
+      ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
       ctx.closePath();
     }
   }
 
-  // ── Draw a lit segment ────────────────────────────────────────
   function drawLit(barX, segY, barW, segH, color, intensity) {
     ctx.save();
     ctx.shadowBlur  = 6 + intensity * 24;
@@ -157,18 +170,15 @@
     ctx.restore();
   }
 
-  // ── Main render loop ──────────────────────────────────────────
   function draw(ts) {
     if (!startTime) startTime = ts;
     const t = ts - startTime;
 
     const W = canvas.width;
     const H = canvas.height;
-
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
 
-    // Phase detection
     let phase, phaseT;
     if (t < T_DARK) {
       phase = 'dark';    phaseT = t / T_DARK;
@@ -190,7 +200,6 @@
       const bar  = bars[bi];
       const barX = slotW * bi + (slotW - barW) / 2;
 
-      // Housing rail
       ctx.fillStyle = 'rgba(255,255,255,0.03)';
       rrect(barX - 1, 0, barW + 2, H, CORNER_R);
       ctx.fill();
@@ -198,27 +207,19 @@
       for (let si = 0; si < NUM_SEGS; si++) {
         const seg  = bar.segments[si];
         const segY = SEG_GAP + si * (segH + SEG_GAP);
-
         let intensity = 0;
         let color     = PALETTE[seg.colorIdx];
 
         if (phase === 'dark') {
           intensity = 0;
-
         } else if (phase === 'waking') {
-          // Slow independent oscillation — dim, sparse, quiet
           const osc = Math.sin(t * seg.wakeSpeed + seg.wakePhase);
           if (osc > seg.wakeThresh) {
             intensity = ((osc - seg.wakeThresh) / (1 - seg.wakeThresh)) * 0.32;
           }
-
         } else if (phase === 'house') {
-          // All bars snap to full white — instant "house lights on"
-          color     = STROBE;
-          intensity = 1.0;
-
+          color = STROBE; intensity = 1.0;
         } else if (phase === 'fadeout') {
-          // White fades top→bottom
           color = STROBE;
           const fadeStart = (si / NUM_SEGS) * 0.4;
           intensity = Math.max(0, 1 - (phaseT - fadeStart) * 3.0);
@@ -246,7 +247,197 @@
     }
   }
 
-  requestAnimationFrame(draw);
+  // ── Audio: St. Thomas vibe via Web Audio API ──────────────────
+  function startAudio() {
+    const ac  = new AudioContext();
+    const BPM = 154;
+    const b   = 60 / BPM;   // seconds per beat
+    const BAR = b * 4;
+    const now = ac.currentTime + 0.08;
+
+    const master = ac.createGain();
+    master.gain.value = 0.55;
+    master.connect(ac.destination);
+
+    // Note frequencies (C4 = 261.63 Hz, semitone helper)
+    const C4 = 261.63;
+    const st = n => C4 * Math.pow(2, n / 12);
+    const D4=st(2), E4=st(4), F4=st(5), G4=st(7), A4=st(9), B4=st(11);
+    const C2=C4/4, D2=D4/4, E2=E4/4, F2=F4/4, G2=G4/4, A2=A4/4, B2=B4/4;
+    const C3=C4/2, D3=D4/2, F3=F4/2;
+
+    // ── Saxophone-like voice (dual detuned sawtooth + lowpass) ──
+    function sax(freq, start, dur, vol = 0.22) {
+      const s = now + start;
+      const o1   = ac.createOscillator();
+      const o2   = ac.createOscillator();
+      const filt = ac.createBiquadFilter();
+      const env  = ac.createGain();
+
+      o1.type = o2.type = 'sawtooth';
+      o1.frequency.value = freq;
+      o2.frequency.value = freq * 1.004;  // slight chorus
+
+      filt.type = 'lowpass'; filt.frequency.value = 1800; filt.Q.value = 2.5;
+
+      env.gain.setValueAtTime(0, s);
+      env.gain.linearRampToValueAtTime(vol, s + 0.03);
+      env.gain.setValueAtTime(vol * 0.8, s + 0.1);
+      env.gain.setValueAtTime(vol * 0.8, s + Math.max(dur - 0.08, 0.05));
+      env.gain.linearRampToValueAtTime(0, s + dur);
+
+      o1.connect(filt); o2.connect(filt);
+      filt.connect(env); env.connect(master);
+      o1.start(s); o1.stop(s + dur + 0.02);
+      o2.start(s); o2.stop(s + dur + 0.02);
+    }
+
+    // ── Walking bass (triangle oscillator, plucked envelope) ────
+    function bass(freq, start) {
+      const s   = now + start;
+      const osc = ac.createOscillator();
+      const env = ac.createGain();
+      osc.type = 'triangle'; osc.frequency.value = freq;
+      env.gain.setValueAtTime(0.5, s);
+      env.gain.exponentialRampToValueAtTime(0.001, s + b * 0.82);
+      osc.connect(env); env.connect(master);
+      osc.start(s); osc.stop(s + b);
+    }
+
+    // ── Hi-hat (filtered noise) ──────────────────────────────────
+    function hat(start, vol = 0.055) {
+      const s    = now + start;
+      const n    = Math.floor(ac.sampleRate * 0.045);
+      const buf  = ac.createBuffer(1, n, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+      const src  = ac.createBufferSource();
+      const filt = ac.createBiquadFilter();
+      const env  = ac.createGain();
+      src.buffer = buf;
+      filt.type = 'highpass'; filt.frequency.value = 7500;
+      env.gain.setValueAtTime(vol, s);
+      env.gain.exponentialRampToValueAtTime(0.001, s + 0.045);
+      src.connect(filt); filt.connect(env); env.connect(master);
+      src.start(s);
+    }
+
+    // ── Kick drum (sine pitch sweep) ─────────────────────────────
+    function kick(start, vol = 0.7) {
+      const s   = now + start;
+      const osc = ac.createOscillator();
+      const env = ac.createGain();
+      osc.frequency.setValueAtTime(140, s);
+      osc.frequency.exponentialRampToValueAtTime(0.001, s + 0.38);
+      env.gain.setValueAtTime(vol, s);
+      env.gain.exponentialRampToValueAtTime(0.001, s + 0.38);
+      osc.connect(env); env.connect(master);
+      osc.start(s); osc.stop(s + 0.4);
+    }
+
+    // ── Rim shot (bandpass noise) ─────────────────────────────────
+    function rim(start) {
+      const s    = now + start;
+      const n    = Math.floor(ac.sampleRate * 0.1);
+      const buf  = ac.createBuffer(1, n, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+      const src  = ac.createBufferSource();
+      const filt = ac.createBiquadFilter();
+      const env  = ac.createGain();
+      src.buffer = buf;
+      filt.type = 'bandpass'; filt.frequency.value = 1800; filt.Q.value = 0.8;
+      env.gain.setValueAtTime(0.17, s);
+      env.gain.exponentialRampToValueAtTime(0.001, s + 0.1);
+      src.connect(filt); filt.connect(env); env.connect(master);
+      src.start(s);
+    }
+
+    // ── Schedule 8 bars of music ─────────────────────────────────
+
+    for (let bar = 0; bar < 8; bar++) {
+      const o = bar * BAR;
+      // Calypso hi-hat: 8th notes, accent downbeats
+      for (let beat = 0; beat < 4; beat++) {
+        hat(o + beat * b, beat % 2 === 0 ? 0.07 : 0.045);
+        hat(o + beat * b + b * 0.5, 0.028);
+      }
+      kick(o);              // kick on 1
+      kick(o + b*2, 0.45);  // softer kick on 3
+      rim(o + b);           // rim on 2
+      rim(o + b*3);         // rim on 4
+    }
+
+    // Walking bass following St. Thomas chord changes (C major):
+    // bars 1–4: C | F | C | G7
+    // bars 5–8: C | F | Dm–G7 | C
+    const bassLine = [
+      [C2,0],       [E2,b],       [G2,b*2],     [A2,b*3],
+      [F2,BAR],     [A2,BAR+b],   [C3,BAR+b*2], [A2,BAR+b*3],
+      [C2,BAR*2],   [E2,BAR*2+b], [G2,BAR*2+b*2],[A2,BAR*2+b*3],
+      [G2,BAR*3],   [B2,BAR*3+b], [D3,BAR*3+b*2],[F3,BAR*3+b*3],
+      [C2,BAR*4],   [E2,BAR*4+b], [G2,BAR*4+b*2],[A2,BAR*4+b*3],
+      [F2,BAR*5],   [A2,BAR*5+b], [C3,BAR*5+b*2],[A2,BAR*5+b*3],
+      [D2,BAR*6],   [F2,BAR*6+b], [A2,BAR*6+b*2],[G2,BAR*6+b*3],
+      [C2,BAR*7],   [E2,BAR*7+b], [G2,BAR*7+b*2],[C3,BAR*7+b*3],
+    ];
+    bassLine.forEach(([f, t]) => bass(f, t));
+
+    // Melody — St. Thomas A section (8 bars)
+    // Core motif: G G E G / E D C (bars 1–2, repeated in 3–4, 5–6)
+    // Bar 7: A G E D  |  Bar 8: long C
+    const melody = [
+      // Bar 1
+      [G4, 0,          b*0.85],
+      [G4, b,          b*0.4 ],
+      [E4, b*1.5,      b*0.4 ],
+      [G4, b*2,        b*0.85],
+      // Bar 2
+      [E4, BAR,        b*0.85],
+      [D4, BAR+b,      b*0.85],
+      [C4, BAR+b*2,    b*1.8 ],
+      // Bar 3
+      [G4, BAR*2,      b*0.85],
+      [G4, BAR*2+b,    b*0.4 ],
+      [E4, BAR*2+b*1.5,b*0.4 ],
+      [G4, BAR*2+b*2,  b*0.85],
+      // Bar 4
+      [D4, BAR*3,      b*1.8 ],
+      [C4, BAR*3+b*2,  b*1.8 ],
+      // Bar 5
+      [G4, BAR*4,      b*0.85],
+      [G4, BAR*4+b,    b*0.4 ],
+      [E4, BAR*4+b*1.5,b*0.4 ],
+      [G4, BAR*4+b*2,  b*0.85],
+      // Bar 6
+      [E4, BAR*5,      b*0.85],
+      [D4, BAR*5+b,    b*0.85],
+      [C4, BAR*5+b*2,  b*1.8 ],
+      // Bar 7
+      [A4, BAR*6,      b*0.85],
+      [G4, BAR*6+b,    b*0.4 ],
+      [E4, BAR*6+b*1.5,b*0.4 ],
+      [D4, BAR*6+b*2,  b*0.85],
+      // Bar 8
+      [C4, BAR*7,      b*3.5 ],
+    ];
+    melody.forEach(([f, t, d]) => sax(f, t, d));
+
+    // Fade master out after animation + brief hold
+    const fadeAt = T_TOTAL / 1000 + 1.0;
+    master.gain.setValueAtTime(0.55, now + fadeAt);
+    master.gain.linearRampToValueAtTime(0, now + fadeAt + 2.5);
+  }
+
+  // ── Entry point ───────────────────────────────────────────────
+  function enter() {
+    intro.classList.add('out');
+    setTimeout(() => intro.remove(), 500);
+    startAudio();
+    requestAnimationFrame(draw);
+  }
+
+  intro.addEventListener('click', enter);
 </script>
 </body>
 </html>
