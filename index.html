@@ -134,7 +134,7 @@
           wakeThresh:    0.80   + Math.random() * 0.18,
           twinklePhase:  Math.random() * Math.PI * 2,
           twinkleSpeed:  0.0003 + Math.random() * 0.0006,  // slower than waking
-          twinkleThresh: 0.92   + Math.random() * 0.07,    // extremely sparse
+          twinkleThresh: 0.96   + Math.random() * 0.03,    // ultra sparse
         })),
       });
     }
@@ -273,7 +273,8 @@
     setTimeout(() => {
       const fadeOutId = setInterval(() => {
         audio.volume = Math.max(0, audio.volume - 0.03);
-        if (audio.volume === 0) {
+        if (audio.volume <= 0.01) {
+          audio.volume = 0;
           clearInterval(fadeOutId);
           audio.pause();
           twinkling = false;
