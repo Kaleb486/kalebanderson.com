@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaleb Anderson</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0; left: 0;
+    }
+
+    #content {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 1.4s ease;
+      pointer-events: none;
+    }
+
+    #content.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    h1 {
+      color: #fff;
+      font-size: clamp(2rem, 6vw, 5rem);
+      font-weight: 200;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-bottom: 2.5rem;
+    }
+
+    a.cta {
+      display: inline-block;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      padding: 0.8em 2.5em;
+      text-decoration: none;
+      letter-spacing: 0.15em;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    a.cta:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.8);
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="stage"></canvas>
+
+<div id="content">
+  <h1>Kaleb Anderson</h1>
+  <a class="cta" href="https://www.linkedin.com/in/educloud" target="_blank" rel="noopener">LinkedIn ↗</a>
+</div>
+
+<script>
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d');
+  const content = document.getElementById('content');
+
+  // ── Layout config ──────────────────────────────────────────────
+  const NUM_BARS     = 14;
+  const NUM_SEGS     = 32;
+  const BAR_W_RATIO  = 0.022;  // bar width as fraction of canvas width
+  const SEG_GAP      = 3;      // px gap between segments
+  const CORNER_R     = 3;      // segment corner radius
+
+  // ── Phase durations (ms) ───────────────────────────────────────
+  const T_DARK    = 400;   // initial darkness
+  const T_POWERON = 2200;  // bars flickering on from bottom
+  const T_PEAK    = 1100;  // all lit, full chase + strobe
+  const T_FADEOUT = 1100;  // lights die top→bottom, name fades in
+  const T_TOTAL   = T_DARK + T_POWERON + T_PEAK + T_FADEOUT;
+
+  let startTime = null;
+  let bars = [];
+
+  // ── Initialise bar data ────────────────────────────────────────
+  function initBars() {
+    bars = [];
+    for (let i = 0; i < NUM_BARS; i++) {
+      bars.push({
+        hueBase:    (i / NUM_BARS) * 360,
+        powerDelay: 0.05 + (i / NUM_BARS) * 0.55 + Math.random() * 0.15,
+        segments:   Array.from({ length: NUM_SEGS }, () => ({
+          strobePhase: Math.random() * Math.PI * 2,
+          flickerSeed: Math.random() * 100,
+        })),
+      });
+    }
+  }
+
+  // ── Resize ─────────────────────────────────────────────────────
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  initBars();
+
+  // ── Rounded rect helper (works in all browsers) ────────────────
+  function rrect(x, y, w, h, r) {
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y,     x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x,     y + h, x,     y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x,     y,     x + r, y);
+      ctx.closePath();
+    }
+  }
+
+  // ── Main render loop ───────────────────────────────────────────
+  function draw(ts) {
+    if (!startTime) startTime = ts;
+    const t = ts - startTime;
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    // Determine current phase
+    let phase, phaseT;
+    if (t < T_DARK) {
+      phase  = 'dark';
+      phaseT = t / T_DARK;
+    } else if (t < T_DARK + T_POWERON) {
+      phase  = 'poweron';
+      phaseT = (t - T_DARK) / T_POWERON;
+    } else if (t < T_DARK + T_POWERON + T_PEAK) {
+      phase  = 'peak';
+      phaseT = (t - T_DARK - T_POWERON) / T_PEAK;
+    } else if (t < T_TOTAL) {
+      phase  = 'fadeout';
+      phaseT = (t - T_DARK - T_POWERON - T_PEAK) / T_FADEOUT;
+    } else {
+      phase  = 'done';
+      phaseT = 1;
+    }
+
+    const barW       = Math.max(8, W * BAR_W_RATIO);
+    const slotW      = W / NUM_BARS;
+    const segH       = (H - SEG_GAP * (NUM_SEGS + 1)) / NUM_SEGS;
+    const globalHue  = (t / 10) % 360;  // slow rainbow drift
+
+    for (let bi = 0; bi < NUM_BARS; bi++) {
+      const bar  = bars[bi];
+      const barX = slotW * bi + (slotW - barW) / 2;
+
+      // Draw dim housing rail
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      rrect(barX - 1, 0, barW + 2, H, CORNER_R);
+      ctx.fill();
+
+      for (let si = 0; si < NUM_SEGS; si++) {
+        const seg  = bar.segments[si];
+        const segY = SEG_GAP + si * (segH + SEG_GAP);
+
+        // Segment hue — each bar has its own hue that shifts with the global drift
+        const hue = (bar.hueBase + globalHue + si * 4) % 360;
+
+        let intensity = 0;
+
+        if (phase === 'dark') {
+          intensity = 0;
+
+        } else if (phase === 'poweron') {
+          // Power on bottom→top, staggered by bar
+          const barStartT = bar.powerDelay;           // 0–1 within poweron phase
+          const barProgress = (phaseT - barStartT) / (1 - barStartT + 0.001);
+          if (barProgress > 0) {
+            const segFromBottom = NUM_SEGS - 1 - si;  // 0 = bottom seg
+            const segThreshold  = (segFromBottom / NUM_SEGS) * 0.9;
+            if (barProgress > segThreshold) {
+              const lit = Math.min(1, (barProgress - segThreshold) * 12);
+              // Flickery startup
+              const flicker = 0.55 + 0.45 * Math.abs(
+                Math.sin(t * 0.019 + seg.strobePhase) *
+                Math.sin(t * 0.031 + seg.flickerSeed)
+              );
+              intensity = lit * flicker;
+            }
+          }
+
+        } else if (phase === 'peak') {
+          // All bars blazing — left-to-right chase wave + random strobe pops
+          const wave    = 0.5 + 0.5 * Math.sin(t / 55 + bi * 0.9 - si * 0.1);
+          const strobe  = Math.random() > 0.985 ? 1.0 : 0;
+          intensity     = Math.min(1, 0.75 + 0.25 * wave + strobe * 0.4);
+
+        } else if (phase === 'fadeout') {
+          // Fade out top→bottom
+          const segNorm = si / NUM_SEGS;            // 0=top, 1=bottom
+          // Top segments start fading first
+          const fadeStart = segNorm * 0.45;
+          intensity = Math.max(0, 1 - (phaseT - fadeStart) * 2.8);
+        }
+
+        if (intensity > 0.01) {
+          const L     = 48 + intensity * 22;
+          const color = `hsl(${hue}, 100%, ${L}%)`;
+
+          ctx.save();
+          ctx.shadowBlur  = 8 + intensity * 22;
+          ctx.shadowColor = color;
+          ctx.fillStyle   = color;
+          rrect(barX, segY, barW, Math.max(2, segH), CORNER_R);
+          ctx.fill();
+          ctx.restore();
+        } else {
+          // Unlit segment — faint housing dot
+          ctx.fillStyle = '#080808';
+          rrect(barX, segY, barW, Math.max(2, segH), CORNER_R);
+          ctx.fill();
+        }
+      }
+    }
+
+    // Reveal name/CTA midway through fadeout
+    if (phase === 'fadeout' && phaseT > 0.35 && !content.classList.contains('visible')) {
+      content.classList.add('visible');
+    }
+
+    if (phase !== 'done') {
+      requestAnimationFrame(draw);
+    } else {
+      // Animation finished — clear to black, content stays visible
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  requestAnimationFrame(draw);
+</script>
+</body>
+</html>
