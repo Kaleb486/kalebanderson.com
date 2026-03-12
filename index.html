@@ -254,8 +254,7 @@
 
   // ── Audio: real jazz track ────────────────────────────────────
   function startAudio() {
-    const audio = new Audio('abydos_music-jazzy-lounge-cafe-182992.mp3');
-    audio.currentTime = 1;   // skip 1s into track
+    const audio = new Audio('jazz.mp3');
     audio.volume = 0;
     audio.play();
 
@@ -269,18 +268,8 @@
     const revealAt = T_DARK + T_WAKING + T_HOUSE + T_FADEOUT * 0.35;
     setTimeout(() => { twinkling = true; requestAnimationFrame(draw); }, revealAt + 5000);
 
-    // Fade out music at 30s, stop twinkling when silence hits
-    setTimeout(() => {
-      const fadeOutId = setInterval(() => {
-        audio.volume = Math.max(0, audio.volume - 0.03);
-        if (audio.volume <= 0.01) {
-          audio.volume = 0;
-          clearInterval(fadeOutId);
-          audio.pause();
-          twinkling = false;
-        }
-      }, 50);
-    }, 30000);
+    // Stop twinkling when track ends naturally
+    audio.addEventListener('ended', () => { twinkling = false; });
   }
 
   // ── Entry point ───────────────────────────────────────────────
