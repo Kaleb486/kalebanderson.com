@@ -235,7 +235,7 @@
 
         if (intensity > 0.01) {
           drawLit(barX, segY, barW, segH, color, intensity);
-        } else {
+        } else if (phase !== 'done') {
           ctx.fillStyle = '#080808';
           rrect(barX, segY, barW, Math.max(2, segH), CORNER_R);
           ctx.fill();
