@@ -94,11 +94,10 @@
 
   // ── Phase durations (ms) ──────────────────────────────────────
   const T_DARK    =  400;   // pure black
-  const T_WAKING  = 2400;   // sparse random pops, very slow
-  const T_POWERON = 2000;   // bottom→top sweep
-  const T_PEAK    = 1200;   // full blast + chase
-  const T_FADEOUT = 1100;   // die top→bottom, name fades in
-  const T_TOTAL   = T_DARK + T_WAKING + T_POWERON + T_PEAK + T_FADEOUT;
+  const T_WAKING  = 3200;   // sparse quiet random pops
+  const T_HOUSE   =  450;   // all bars snap to white — "house lights on"
+  const T_FADEOUT = 1200;   // white fades top→bottom, name appears
+  const T_TOTAL   = T_DARK + T_WAKING + T_HOUSE + T_FADEOUT;
 
   let startTime = null;
   let bars = [];
@@ -108,14 +107,11 @@
     bars = [];
     for (let i = 0; i < NUM_BARS; i++) {
       bars.push({
-        powerDelay: 0.05 + (i / NUM_BARS) * 0.55 + Math.random() * 0.15,
         segments: Array.from({ length: NUM_SEGS }, () => ({
-          colorIdx:    Math.floor(Math.random() * PALETTE.length),
-          strobePhase: Math.random() * Math.PI * 2,
-          flickerSeed: Math.random() * 100,
-          wakePhase:   Math.random() * Math.PI * 2,
-          wakeSpeed:   0.0006 + Math.random() * 0.001,  // very slow oscillation (per ms)
-          wakeThresh:  0.50  + Math.random() * 0.35,    // high = sparse pops
+          colorIdx:   Math.floor(Math.random() * PALETTE.length),
+          wakePhase:  Math.random() * Math.PI * 2,
+          wakeSpeed:  0.0005 + Math.random() * 0.0008,  // very slow (per ms)
+          wakeThresh: 0.62 + Math.random() * 0.30,      // sparse — most are off at any moment
         })),
       });
     }
@@ -178,12 +174,10 @@
       phase = 'dark';    phaseT = t / T_DARK;
     } else if (t < T_DARK + T_WAKING) {
       phase = 'waking';  phaseT = (t - T_DARK) / T_WAKING;
-    } else if (t < T_DARK + T_WAKING + T_POWERON) {
-      phase = 'poweron'; phaseT = (t - T_DARK - T_WAKING) / T_POWERON;
-    } else if (t < T_DARK + T_WAKING + T_POWERON + T_PEAK) {
-      phase = 'peak';    phaseT = (t - T_DARK - T_WAKING - T_POWERON) / T_PEAK;
+    } else if (t < T_DARK + T_WAKING + T_HOUSE) {
+      phase = 'house';   phaseT = (t - T_DARK - T_WAKING) / T_HOUSE;
     } else if (t < T_TOTAL) {
-      phase = 'fadeout'; phaseT = (t - T_DARK - T_WAKING - T_POWERON - T_PEAK) / T_FADEOUT;
+      phase = 'fadeout'; phaseT = (t - T_DARK - T_WAKING - T_HOUSE) / T_FADEOUT;
     } else {
       phase = 'done';    phaseT = 1;
     }
@@ -212,52 +206,22 @@
           intensity = 0;
 
         } else if (phase === 'waking') {
-          // Each segment oscillates independently at a slow random frequency.
-          // It lights up only when the sine wave crests above its threshold.
+          // Slow independent oscillation — dim, sparse, quiet
           const osc = Math.sin(t * seg.wakeSpeed + seg.wakePhase);
           if (osc > seg.wakeThresh) {
-            intensity = ((osc - seg.wakeThresh) / (1 - seg.wakeThresh)) * 0.55;
+            intensity = ((osc - seg.wakeThresh) / (1 - seg.wakeThresh)) * 0.32;
           }
 
-        } else if (phase === 'poweron') {
-          // Waking oscillation continues under the sweep
-          const osc = Math.sin(t * seg.wakeSpeed + seg.wakePhase);
-          let wakeInt = 0;
-          if (osc > seg.wakeThresh) {
-            wakeInt = ((osc - seg.wakeThresh) / (1 - seg.wakeThresh)) * 0.55;
-          }
-
-          // Bottom→top sweep, staggered per bar
-          const barStartT   = bar.powerDelay;
-          const barProgress = (phaseT - barStartT) / (1 - barStartT + 0.001);
-          let sweepInt = 0;
-          if (barProgress > 0) {
-            const segFromBottom = NUM_SEGS - 1 - si;
-            const segThreshold  = (segFromBottom / NUM_SEGS) * 0.9;
-            if (barProgress > segThreshold) {
-              const lit     = Math.min(1, (barProgress - segThreshold) * 12);
-              const flicker = 0.55 + 0.45 * Math.abs(
-                Math.sin(t * 0.019 + seg.strobePhase) *
-                Math.sin(t * 0.031 + seg.flickerSeed)
-              );
-              sweepInt = lit * flicker;
-            }
-          }
-          intensity = Math.max(wakeInt, sweepInt);
-
-        } else if (phase === 'peak') {
-          // Color chase: palette cycles across bars over time
-          const ci  = Math.floor((bi / NUM_BARS * PALETTE.length + t / 380) % PALETTE.length);
-          color     = PALETTE[ci];
-          const wave   = 0.5 + 0.5 * Math.sin(t / 55 + bi * 0.9 - si * 0.1);
-          const strobe = Math.random() > 0.988;
-          if (strobe) color = STROBE;
-          intensity = Math.min(1, 0.75 + 0.25 * wave + (strobe ? 0.4 : 0));
+        } else if (phase === 'house') {
+          // All bars snap to full white — instant "house lights on"
+          color     = STROBE;
+          intensity = 1.0;
 
         } else if (phase === 'fadeout') {
-          // Top fades first
-          const fadeStart = (si / NUM_SEGS) * 0.45;
-          intensity = Math.max(0, 1 - (phaseT - fadeStart) * 2.8);
+          // White fades top→bottom
+          color = STROBE;
+          const fadeStart = (si / NUM_SEGS) * 0.4;
+          intensity = Math.max(0, 1 - (phaseT - fadeStart) * 3.0);
         }
 
         if (intensity > 0.01) {
