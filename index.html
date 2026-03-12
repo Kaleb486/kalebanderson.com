@@ -122,6 +122,68 @@
   let startTime = null;
   let bars = [];
 
+  // ── Sparkle state ─────────────────────────────────────────────
+  let sparkles        = [];
+  let sparkleRunning  = false;
+  let sparkleSpawnId  = null;
+
+  function addSparkle() {
+    const W = canvas.width, H = canvas.height;
+    // Exclusion zone: roughly the center area where name + button live
+    const exW = Math.min(600, W * 0.46), exH = Math.min(280, H * 0.28);
+    const exX1 = W / 2 - exW / 2, exX2 = W / 2 + exW / 2;
+    const exY1 = H / 2 - exH / 2, exY2 = H / 2 + exH / 2;
+    let x, y, tries = 0;
+    do {
+      x = Math.random() * W;
+      y = Math.random() * H;
+    } while (++tries < 30 && x > exX1 && x < exX2 && y > exY1 && y < exY2);
+    sparkles.push({
+      x, y,
+      size:    0.5 + Math.random() * 1.2,
+      opacity: 0,
+      dir:     1,
+      speed:   0.004 + Math.random() * 0.006,
+    });
+  }
+
+  function drawSparkles() {
+    if (!sparkleRunning && sparkles.length === 0) return;
+    const W = canvas.width, H = canvas.height;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    sparkles = sparkles.filter(s => {
+      s.opacity += s.dir * s.speed;
+      if (s.opacity >= 1) { s.dir = -1; }
+      if (s.opacity <= 0 && s.dir === -1) return false;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, s.opacity) * 0.55;
+      ctx.fillStyle   = '#fff';
+      ctx.shadowBlur  = 5;
+      ctx.shadowColor = '#fff';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return true;
+    });
+    requestAnimationFrame(drawSparkles);
+  }
+
+  function startSparkles() {
+    sparkleRunning = true;
+    sparkleSpawnId = setInterval(() => {
+      if (sparkles.length < 35) addSparkle();
+    }, 300);
+    drawSparkles();
+  }
+
+  function stopSparkles() {
+    sparkleRunning = false;
+    clearInterval(sparkleSpawnId);
+    // existing sparkles fade out naturally in drawSparkles
+  }
+
   function initBars() {
     bars = [];
     for (let i = 0; i < NUM_BARS; i++) {
@@ -253,13 +315,17 @@
     audio.volume = 0.8;
     audio.play();
 
-    // Fade out after 30 seconds
+    // Sparkles start ~5s after the reveal
+    const revealAt = T_DARK + T_WAKING + T_HOUSE + T_FADEOUT * 0.35;
+    setTimeout(startSparkles, revealAt + 5000);
+
+    // Fade out music at 30s, stop sparkles when fade is done (~32s)
     const fadeAt = 30000;
     setTimeout(() => {
       const step = 50;
       const id = setInterval(() => {
         audio.volume = Math.max(0, audio.volume - 0.03);
-        if (audio.volume === 0) { clearInterval(id); audio.pause(); }
+        if (audio.volume === 0) { clearInterval(id); audio.pause(); stopSparkles(); }
       }, step);
     }, fadeAt);
   }
