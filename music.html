@@ -154,5 +154,15 @@
     </div>
   </section>
 
+  <script>
+    const audio = new Audio('crescent-moon.mp3');
+    audio.volume = 0;
+    audio.play().catch(() => {});
+
+    const fadeInId = setInterval(() => {
+      audio.volume = Math.min(0.8, audio.volume + 0.016);
+      if (audio.volume >= 0.8) clearInterval(fadeInId);
+    }, 50);
+  </script>
 </body>
 </html>
